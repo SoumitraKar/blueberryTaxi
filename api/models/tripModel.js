@@ -31,10 +31,14 @@ var tripSchema = new Schema({
     Required: 'Use driverId'
   },
   startTime: {
-    type: Date
+    type: Number
   },
   endTime: {
-    type: Date
+    type: Number
+  },
+  pinkTrip : {
+    type: Boolean,
+    default: false
   }
 });
 

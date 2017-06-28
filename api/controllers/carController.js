@@ -65,6 +65,12 @@ exports.view_nearest_car = function(req, res) {
     trip["start_lat"] = request.laitude;
     trip["start_long"] = request.longitude;
     trip["driverId"] = carDetails.cabId;
+    if  (request.isPink){
+      trip["pinkTrip"] = true;
+    }
+    else {
+      trip["pinkTrip"] = false;
+    }
   trip.save(function(err, trp) {
       console.log("====" + shortestpath);
     if (err){
@@ -164,7 +170,10 @@ exports.startTrip = function(req, res) {
         res.json(op);
       }
       else{
-        Trip.update({"tripId" : trpId},{"started" : true, "startTime" : Date.now()}, { multi: false }, function(err, resp){
+        var dateNow = new Date();
+        var timeNow = dateNow.getTime();
+        console.log(">>>>>>>>>>>>>>>>>>" + timeNow);
+        Trip.update({"tripId" : trpId},{"started" : true, "startTime" : timeNow}, { multi: false }, function(err, resp){
           if(err){
             var op = {
               "success" : false,
@@ -200,7 +209,7 @@ exports.endTrip = function(req, res) {
   var trpId = req.body.tripId;
   var latitude = req.body.latitude;
   var longitude = req.body.longitude;
-  var timeNow = Date.now();
+  // var timeNow = Date.now();
   var trip_to_end = {};
   var success = true;
   var errMsg = "";
@@ -235,15 +244,40 @@ exports.endTrip = function(req, res) {
             //Calculate Fare
             var long_diff = parseInt(trip_to_end[0].start_long) - parseInt(longitude);
             var lat_diff = parseInt(trip_to_end[0].start_lat) - parseInt(latitude);
-            console.log(long_diff);
-            console.log(lat_diff);
             var dist = Math.sqrt((long_diff * long_diff) + (lat_diff * lat_diff));
-            console.log(dist)
+            var dateNow = new Date();
+            var timeNow = dateNow.getTime();
+            var timeDiff = timeNow - parseInt(trip_to_end[0].startTime);
+            timeDiff = timeDiff / 1000;
+            var timeInHr = 0;
+            var timeInMin = 0;
+            var timeInSec = timeDiff;
+            var totMin = 0;
+
+            while(timeInSec >= 60){
+              timeInMin++;
+              totMin++;
+              timeInSec = timeInSec - 60;
+            }
+            while(timeInMin >= 60){
+              timeInHr++;
+              timeInMin = timeInMin - 60;
+            }
+            // timeInSec = timeDiff;
+            var fare = (2 * dist) + totMin;
+            if(trip_to_end[0].pinkTrip) {
+              fare += 5;
+            }
             var op = {
               "success" : true,
-              "distance" : dist
-            }        
-            res.json(op);
+              "distance" : dist,
+              "timeElapsed" : timeInHr + "Hr " + timeInMin + "min " + timeInSec + "sec",
+              "PinkCharge" : trip_to_end[0].pinkTrip,
+              "tripFare" : fare
+            }      
+            Car.update({"cabId" : trip_to_end[0].driverId},{"available" : true, "latitude" : latitude, "longitude" : longitude}, { multi: false }, function(e, r){
+              res.json(op);
+            });  
           }
 
         });
